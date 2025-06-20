@@ -1,38 +1,10 @@
 // game.js
-let isMuted = false; // define it at the top so it works
-async function getAIQuestion() {
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": "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", // 🔁 Replace with your key
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model: "deepseek/deepseek-r1-0528:free", // ✅ You can switch this model later
-      messages: [
-        {
-          role: "system",
-          content: "You are a chaotic party AI that only responds with one hilarious, edgy, but fun drinking game question or challeneg each time you're asked. No explanations. No repeats."
-        },
-        {
-          role: "user",
-          content: "Give me a new random drinking game question or challenge."
-        }
-      ],
-      max_tokens: 60,
-    })
-    
-  });
 
-  const data = await response.json();
-  const question = data.choices?.[0]?.message?.content || "🍻 Error getting question";
-  return question;
-}
-let lastQuestionIndex = -1;
-async function showNextQuestion() {
-  const question = await getAIQuestion();
-  document.getElementById("question-box").innerText = question;
-}
+// ─── GLOBAL STATE ─────────────────────────────────────────
+let isMuted = false;           // 🔇 mute flag
+let lastQuestionIndex = -1;    // 🎲 tracks last fallback to avoid repeats
+
+// ─── FALLBACK QUESTIONS ────────────────────────────────────
 const fallbackQuestions = [
   "Who's most likely to drunk text their ex?",
   "Who's most likely to black out tonight?",
@@ -56,65 +28,75 @@ const fallbackQuestions = [
   "Who's most likely to start crying over a song?"
 ];
 
+// ─── HELPER: NO-REPEAT FALLBACK ────────────────────────────
 function getRandomFallbackQuestion() {
-  let index;
+  let i;
   do {
-    index = Math.floor(Math.random() * fallbackQuestions.length);
-  } while (index === lastQuestionIndex);
-
-  lastQuestionIndex = index;
-  return fallbackQuestions[index];
-
-if (!currentQuestion || typeof currentQuestion !== "string") {
-    currentQuestion = getRandomFallbackQuestion();
-  // fallback to a random question
-
-
-} 
+    i = Math.floor(Math.random() * fallbackQuestions.length);
+  } while (i === lastQuestionIndex);
+  lastQuestionIndex = i;
+  return fallbackQuestions[i];
 }
-// Sound Effects
-const buzzSound = new Audio("buzz.mp3"); // add file to folder
-const bgMusic = new Audio("music.mp3"); // optional music
-bgMusic.loop = true;
 
-// Connect button to AI + fallback system
+// ─── AI FETCH via YOUR VERCEL PROXY ────────────────────────
+async function getAIQuestion() {
+  try {
+    const res = await fetch("/api/ai", { method: "POST" });
+    if (!res.ok) throw new Error(`Proxy error ${res.status}`);
+    const data = await res.json();
+    const q = data.choices?.[0]?.message?.content?.trim() || null;
+    return q;
+  } catch (err) {
+    console.error("❌ AI fetch failed:", err);
+    return null;
+  }
+}
+
+// ─── SOUND SETUP ───────────────────────────────────────────
+const buzzSound = new Audio("buzz.mp3");
+const bgMusic   = new Audio("music.mp3");
+bgMusic.loop    = true;
+
+// ─── BUTTON: NEXT QUESTION ─────────────────────────────────
 document.getElementById("next-btn").addEventListener("click", async () => {
   const box = document.getElementById("question-box");
 
-  // Play background music only after user interaction
+  // 1️⃣ start background music on first click
   if (!isMuted && bgMusic.paused) {
-    bgMusic.play();
+    bgMusic.play().catch(() => {});
   }
 
-  // Try AI
+  // 2️⃣ try AI first
   let question = await getAIQuestion();
 
-  // Fallback if AI fails
-  if (!question || typeof question !== "string") {
+  // 3️⃣ fallback if AI failed
+  if (!question) {
     question = getRandomFallbackQuestion();
   }
 
+  // 4️⃣ play buzz sound
   if (!isMuted) buzzSound.play();
+
+  // 5️⃣ display the question
   box.innerText = question;
 });
 
-  
-
+// ─── BUTTON: ADD CUSTOM QUESTION ──────────────────────────
 document.getElementById("custom-btn").addEventListener("click", () => {
-  const userQuestion = prompt("Type your custom question:");
-  if (userQuestion) {
-   fallbackQuestions.push(userQuestion); // store in fallback question list
-    alert("Saved!");
+  const userQ = prompt("Type your custom question:");
+  if (userQ) {
+    fallbackQuestions.push(userQ);
+    alert("Custom question saved!");
   }
 });
 
+// ─── BUTTON: MUTE / UNMUTE ─────────────────────────────────
 document.getElementById("mute-btn").addEventListener("click", () => {
   isMuted = !isMuted;
   document.getElementById("mute-btn").textContent = isMuted ? "🔇" : "🔊";
   if (isMuted) {
     bgMusic.pause();
   } else {
-    bgMusic.play();
+    bgMusic.play().catch(() => {});
   }
 });
-
