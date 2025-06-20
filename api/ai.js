@@ -13,10 +13,16 @@ module.exports = async (req, res) => {
         },
         body: JSON.stringify({
           model: "mistralai/mistral-7b-instruct",
-          messages: [
-            { role: "system", content: "You are a party AI—one question only." },
-            { role: "user",   content: "Give me a random drinking game question." }
-          ],
+           messages: [
+   {
+     role: "system",
+    content: "You are a chaotic party AI that responds with one funny drinking game prompt each time: either a “Who’s most likely…” question or a quick challenge (e.g. “Name 3 songs by Drake,” “Impersonate another player,” “Which player would you kiss if you had the chance?”). No explanations. No repeats."
+   },
+   {
+     role: "user",
+    content: "Give me a funny and energetic/lit random drinking game question or challenge prompt."
+   }
+ ],
           max_tokens: 60
         })
       }
