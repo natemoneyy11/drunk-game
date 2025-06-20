@@ -1,0 +1,9 @@
+# ignore node modules
+node_modules/
+
+# ignore local env file containing your API key
+.env.local
+
+# (optional) IDE, OS, log files, etc.
+.DS_Store
+npm-debug.log*
